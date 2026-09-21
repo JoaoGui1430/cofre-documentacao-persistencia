@@ -1,0 +1,9 @@
+aplicacao:
+  nome: "Cofre de Documentação de Projetos de Software"
+
+diretorios:
+  arquivos: "storage/arquivos"
+  metadata: "storage/metadata"
+  logs: "storage/logs"
+  exportacoes: "storage/exportacoes"
+  backups: "storage/backups"
