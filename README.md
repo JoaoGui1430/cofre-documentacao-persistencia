@@ -1,5 +1,7 @@
 TEMA 6 
-Nome: João Guilherme Gadelha Abreu De Souza
+Nome(s): 
+- João Guilherme Gadelha Abreu De Souza
+- 
 Versão do Python: Python 3.14.3
 
 
