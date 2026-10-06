@@ -1,8 +1,12 @@
+from functools import lru_cache
 from pathlib import Path
 import yaml
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# lru_cache guarda o resultado da primeira chamada: o config.yaml é lido uma
+# única vez e todos os módulos passam a compartilhar o mesmo dicionário.
+@lru_cache
 def carregar_configuracao():
     caminho = BASE_DIR / "config.yaml"
 

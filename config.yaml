@@ -7,3 +7,6 @@ diretorios:
   logs: "storage/logs"
   exportacoes: "storage/exportacoes"
   backups: "storage/backups"
+
+upload:
+  tamanho_maximo_mb: 20
