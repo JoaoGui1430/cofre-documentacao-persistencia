@@ -135,7 +135,7 @@ def recuperar_versao(projeto, versao):
             with ZipFile(destino, "x", compression=ZIP_DEFLATED) as pacote:
                 for documento in documentos:
                     caminho = caminho_do_arquivo(documento)
-                    if calcular_sha256(caminho, config.get("hash", {}).get("algoritmo", "sha256")) != documento.sha256:
+                    if calcular_sha256(caminho, config["hash"]["algoritmo"]) != documento.sha256:
                         raise HTTPException(status_code=409, detail=f"Falha na integridade do arquivo {documento.nome_original} (hash SHA256 não confere)")
                     nome = documento.nome_original.replace("\\", "/").rsplit("/", 1)[-1]
                     pacote.write(caminho, f"arquivos/{documento.id}/{nome}")

@@ -10,3 +10,6 @@ diretorios:
 
 upload:
   tamanho_maximo_mb: 20
+
+hash:
+  algoritmo: "sha256"

@@ -13,6 +13,8 @@ from core.config import carregar_configuracao
 from core.repositorio import ErroPersistencia, adicionar_documento, buscar_documento, carregar_documentos
 from core.serializacao import operacao_armazenamento
 from services import documentos_service as service
+from services.estatisticas_service import calcular_estatisticas
+from services.integridade_service import verificar_documento
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger("cofre_api")
 
@@ -112,7 +114,10 @@ def baixar_versao(projeto: str = Query(...), versao: str = Query(...)):
     caminho = service.recuperar_versao(projeto, versao)
     return FileResponse(caminho, media_type="application/zip", filename=caminho.name) 
 
-
+# F8 estatísticas
+@router.get("/estatisticas")
+def estatisticas():
+    return calcular_estatisticas()
 
 # F3 - Consulta
 @router.get("/{id}", response_model=Documento)
@@ -147,3 +152,7 @@ def excluir_documento(id: UUID):
     service.excluir_documento(id)
     return Response(status_code=204)
 
+#F9 - Integridade individual
+@router.get("/{id}/integridade")
+def integridade_documento(id: UUID):
+    return verificar_documento(id)
