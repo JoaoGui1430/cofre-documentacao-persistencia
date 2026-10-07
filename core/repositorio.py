@@ -10,7 +10,7 @@ from app.documento import Documento
 from core.armazenamento import diretorio
 
 # Impede que duas requisições simultâneas leiam/escrevam o JSON ao mesmo tempo e uma apague a alteração da outra.
-trava = threading.Lock()
+trava = threading.RLock()
 
 
 class ErroPersistencia(Exception):

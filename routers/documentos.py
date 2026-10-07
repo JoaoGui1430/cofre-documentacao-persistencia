@@ -4,14 +4,15 @@ from datetime import date, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
 
-from app.documento import Documento
+from app.documento import Documento, DocumentoAtualizacao
 from core.armazenamento import caminho_arquivo, calcular_sha256, gravar_arquivo, remover_arquivo
 from core.config import carregar_configuracao
 from core.repositorio import ErroPersistencia, adicionar_documento, buscar_documento, carregar_documentos
-
+from core.serializacao import operacao_armazenamento
+from services import documentos_service as service
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger("cofre_api")
 
@@ -28,6 +29,7 @@ def obter_documento_ou_404(id: UUID) -> Documento:
 # Os metadados chegam como campos de formulário (Form) porque o arquivo é enviado
 # em multipart/form-data; não dá para mandar um corpo JSON junto com o arquivo.
 @router.post("", status_code=201, response_model=Documento)
+@operacao_armazenamento()
 def upload_documento(
     arquivo: UploadFile = File(...),
     categoria: str = Form(..., min_length=1),
@@ -97,13 +99,19 @@ def upload_documento(
 
 # F2 - Listagem (retorna os metadados completos de cada documento)
 @router.get("", response_model=list[Documento])
-def listar_documentos():
-    documentos = carregar_documentos()
+def listar_documentos(categoria: str | None = None, projeto: str | None = None, versao: str | None = None):
+    documentos = service.listar_documentos(categoria=categoria, projeto=projeto, versao=versao)
     logger.info("LISTAGEM total=%d", len(documentos))
     return documentos
 
 
-# ATENÇÃO: rotas fixas como "/estatisticas" devem ser declaradas AQUI, antes de "/{id}".
+
+#F16 - Recuperação de todos documentos de um projeto e versão
+@router.get("/versao/download")
+def baixar_versao(projeto: str = Query(...), versao: str = Query(...)):
+    caminho = service.recuperar_versao(projeto, versao)
+    return FileResponse(caminho, media_type="application/zip", filename=caminho.name) 
+
 
 
 # F3 - Consulta
@@ -127,3 +135,15 @@ def baixar_documento(id: UUID):
     # FileResponse envia os bytes do arquivo exatamente como estão no disco;
     # filename= faz o navegador salvar com o nome original.
     return FileResponse(caminho, media_type=documento.tipo_mime, filename=documento.nome_original)
+
+#F5 - Atualização metadados
+@router.put("/{id}", response_model=Documento)
+def atualizar_documento(id: UUID, atualizacao: DocumentoAtualizacao):
+    return service.atualizar_documento(id, atualizacao)
+
+#F6 - Exclusão
+@router.delete("/{id}", status_code=204)
+def excluir_documento(id: UUID):
+    service.excluir_documento(id)
+    return Response(status_code=204)
+
