@@ -69,3 +69,28 @@ def criar_backup(projeto=None, versao=None):
         "total_documentos": len(incluidos),
         "arquivos_ausentes": ausentes,
     }
+
+
+def listar_backups():
+    """Lê a pasta de backups e devolve nome e tamanho de cada ZIP, do mais antigo ao mais novo."""
+    try:
+        # glob("*.zip") lista só os arquivos .zip da pasta; st_mtime é a data em que cada um foi gravado.
+        arquivos = sorted(diretorio("backups").glob("*.zip"), key=lambda caminho: caminho.stat().st_mtime)
+        backups = [{"arquivo": caminho.name, "tamanho": caminho.stat().st_size} for caminho in arquivos]
+    except OSError as erro:
+        documentos.falhar(500, "Falha ao ler a pasta de backups", erro)
+
+    documentos.logger.info("LISTAGEM_BACKUPS total=%d", len(backups))
+    return backups
+
+
+def localizar_backup(nome):
+    """Devolve o caminho do backup pedido, ou 404 se ele não existir."""
+    pasta = diretorio("backups").resolve()
+    caminho = (pasta / nome).resolve()
+    # Só aceita um .zip que esteja diretamente na pasta de backups (bloqueia nomes como "../config.yaml").
+    if caminho.parent != pasta or caminho.suffix != ".zip" or not caminho.is_file():
+        documentos.falhar(404, f"Backup não encontrado: {nome}")
+
+    documentos.logger.info("DOWNLOAD_BACKUP arquivo=%s", caminho.name)
+    return caminho
