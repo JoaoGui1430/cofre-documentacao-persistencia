@@ -16,22 +16,23 @@ def verificar_arquivo(documento):
         caminho = documentos.caminho_do_arquivo(documento)
         atual = calcular_sha256(caminho, documentos.config["hash"]["algoritmo"])
     except HTTPException as erro:
+        # 404 = arquivo físico sumiu (já registrado no log por caminho_do_arquivo).
         if erro.status_code == 404:
             return resultado
         raise
     except FileNotFoundError:
-        documentos.logger.warning("Arquivo ausente na verificação: id=%s", documento.id)
+        documentos.logger.error("ARQUIVO_FISICO_NAO_ENCONTRADO id=%s arquivo=%s", documento.id, documento.nome_armazenado)
         return resultado
     except OSError as erro:
         resultado["status"] = "erro_leitura"
-        documentos.logger.error("Falha ao ler arquivo para verificação: id=%s erro=%s", documento.id, erro)
+        documentos.logger.error("ERRO_LEITURA id=%s arquivo=%s erro=%s", documento.id, documento.nome_armazenado, erro)
         return resultado
     resultado["sha256_atual"] = atual
     resultado["status"] = "integro" if atual == documento.sha256 else "alterado"
     if resultado["status"] == "integro":
-        documentos.logger.info("Verificação de integridade integro: id=%s", documento.id)
+        documentos.logger.info("INTEGRIDADE_OK id=%s arquivo=%s", documento.id, documento.nome_original)
     else:
-        documentos.logger.warning("Falha de integridade: id=%s", documento.id)
+        documentos.logger.warning("INTEGRIDADE_FALHOU id=%s arquivo=%s", documento.id, documento.nome_original)
     return resultado
 
 def verificar_documento(identificador):
@@ -55,7 +56,7 @@ def verificar_todos():
         ausentes = sum(item["status"] == "ausente" for item in resultados)
         erros = sum(item["status"] == "erro_leitura" for item in resultados)
 
-        documentos.logger.info("Integridade global: total=%s, integros=%s, alterados=%s, ausentes=%s, erros=%s", len(registros), integros, alterados, ausentes, erros)
+        documentos.logger.info("INTEGRIDADE_GLOBAL total=%d integros=%d alterados=%d ausentes=%d erros=%d", len(registros), integros, alterados, ausentes, erros)
 
         return {
             "total_documentos": len(registros),

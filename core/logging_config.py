@@ -27,6 +27,6 @@ def configurar_logging(config):
     logging.config.dictConfig(config_logging)
     
     logger = logging.getLogger("cofre_api")
-    logger.info("Sistema de logging inicializado")
+    logger.info("INICIALIZACAO aplicacao=\"%s\" log=%s", config["aplicacao"]["nome"], config_logging["handlers"]["file"]["filename"])
 
     return logger

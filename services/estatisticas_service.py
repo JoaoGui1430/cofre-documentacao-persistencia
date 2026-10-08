@@ -13,5 +13,5 @@ def calcular_estatisticas():
         "por_projeto": dict(Counter(doc.projeto for doc in registros)),
     }
 
-    documentos.logger.info("Estatisticas consultadas: %s documentos(s).", len(registros))   
+    documentos.logger.info("ESTATISTICAS total_documentos=%d", len(registros))   
     return resultado

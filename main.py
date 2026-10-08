@@ -30,5 +30,4 @@ def tratar_erro_persistencia(request: Request, erro: ErroPersistencia):
 
 @app.get("/")
 def home():
-    logger.info("Endpoint raiz acessado.")
     return{"mensagem":"Cofre de documentação em funcionamento"}

@@ -19,29 +19,34 @@ PASTA_ARQUIVOS = (BASE_DIR / config["diretorios"]["arquivos"]).resolve()
 PASTA_EXPORTACOES = diretorio("exportacoes")
 CATALOGO = BASE_DIR / config["diretorios"]["metadata"] / "documentos.json"
 
-def falhar(status, mensagem, causa=None):
+def falhar(status, mensagem, causa=None, operacao="REQUISICAO_INVALIDA"):
+    """Registra o erro no log (no formato OPERACAO chave=valor) e devolve o erro HTTP ao cliente."""
+    # 4xx = problema na requisição (WARNING); 5xx = falha do servidor (ERROR).
     nivel = logging.ERROR if status >= 500 else logging.WARNING
-    logger.log(nivel, "%s | causa=%s", mensagem, causa)
+    if causa is None:
+        logger.log(nivel, "%s status=%d detalhe=%s", operacao, status, mensagem)
+    else:
+        logger.log(nivel, "%s status=%d detalhe=%s causa=%s", operacao, status, mensagem, causa)
     raise HTTPException(status_code=status, detail=mensagem) from causa
 def limpar_parcial(caminho):
     try:
         caminho.unlink(missing_ok=True)
     except OSError as erro:
-        logger.error("Falha ao remover arquivo parcial %s: %s", caminho, erro)
+        logger.error("ERRO_ESCRITA arquivo=%s detalhe=falha ao remover arquivo parcial erro=%s", caminho, erro)
 
 def carregar_documentos():
     with repositorio.trava:
         try:
             return repositorio.carregar_documentos()
         except repositorio.ErroPersistencia as erro:
-            falhar(500, "Não foi possivel ler o catálogo", erro)
+            falhar(500, "Não foi possivel ler o catálogo", erro, operacao="ERRO_LEITURA")
 
 def salvar_documentos(documentos):
     with repositorio.trava:
         try:
             repositorio.salvar_documentos(documentos)
         except repositorio.ErroPersistencia as erro:
-            falhar(500, "Não foi possivel salvar o catálogo", erro)
+            falhar(500, "Não foi possivel salvar o catálogo", erro, operacao="ERRO_ESCRITA")
 
 def normalizar_metadados(dados):
     resultado = {}
@@ -49,7 +54,7 @@ def normalizar_metadados(dados):
         if isinstance(valor, str):
             valor = valor.strip()
             if not valor and campo != "descricao":
-                raise HTTPException(status_code=400, detail=f"Campo obrigatório '{campo}' não informado")
+                falhar(400, f"Campo obrigatório '{campo}' não informado")
         resultado[campo] = valor
     return resultado
 
@@ -57,6 +62,8 @@ def localizar(documentos, identificador):
     for documento in documentos:         
         if documento.id == identificador:
             return documento
+    # O enunciado registra documento inexistente como ERROR (ex.: "ERROR DOCUMENTO_NAO_ENCONTRADO id=50").
+    logger.error("DOCUMENTO_NAO_ENCONTRADO id=%s", identificador)
     raise HTTPException(status_code=404, detail=f"Documento {identificador} não encontrado")   
 
 def buscar_documento(identificador):
@@ -65,8 +72,10 @@ def buscar_documento(identificador):
 def caminho_do_arquivo(documento):
     caminho = caminho_arquivo(documento.nome_armazenado).resolve()
     if caminho.parent != diretorio("arquivos").resolve():
-        raise HTTPException(status_code=500, detail="Caminho do arquivo inválido")
+        falhar(500, "Caminho do arquivo inválido", operacao="CAMINHO_INVALIDO")
     if not caminho.is_file():
+        # O documento está no JSON mas o arquivo sumiu do disco: inconsistência do armazenamento (ERROR).
+        logger.error("ARQUIVO_FISICO_NAO_ENCONTRADO id=%s arquivo=%s", documento.id, documento.nome_armazenado)
         raise HTTPException(status_code=404, detail=f"Arquivo não encontrado: {documento.id}")
     return caminho
 
@@ -76,16 +85,16 @@ def atualizar_documento(identificador, atualizacao):
         documentos = carregar_documentos()
         documento = localizar(documentos, identificador)
         if not alteracoes:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            falhar(400, "Nenhum campo para atualizar")
         dados = documento.model_dump()
         dados.update(alteracoes)
         try:
             atualizado = Documento.model_validate(dados)
         except ValidationError as erro:
-            raise HTTPException(status_code=422, detail=f"Dados inválidos: {erro}") from erro
+            falhar(422, f"Dados inválidos: {erro}", operacao="DADOS_INVALIDOS")
         documentos = [atualizado if item.id == identificador else item for item in documentos]
         salvar_documentos(documentos)
-        logger.info("Documento atualizado: id=%s campos=%s", identificador, list(alteracoes))
+        logger.info("ATUALIZACAO id=%s arquivo=%s campos=%s", identificador, documento.nome_original, list(alteracoes))
         return atualizado
 
 def excluir_documento(identificador):
@@ -107,12 +116,12 @@ def excluir_documento(identificador):
                 if catalogo_alterado:
                     salvar_documentos(documentos)
             except (OSError, HTTPException) as recuperacao:
-               falhar(500, "Falha ao excluir o documento e recuperar o estado anterior", recuperacao)
+               falhar(500, "Falha ao excluir o documento e recuperar o estado anterior", recuperacao, operacao="ERRO_EXCLUSAO")
             if isinstance(erro, HTTPException):
                 raise
-            falhar(500, "Falha ao excluir o documento", erro) 
+            falhar(500, "Falha ao excluir o documento", erro, operacao="ERRO_EXCLUSAO") 
                 
-    logger.info("Documento excluído: id=%s arquivo=%s", identificador, documento.nome_original)
+    logger.info("EXCLUSAO id=%s arquivo=%s", identificador, documento.nome_original)
 
 def listar_documentos(categoria=None, projeto=None, versao=None):
     filtros = normalizar_metadados({
@@ -129,13 +138,14 @@ def recuperar_versao(projeto, versao):
     with repositorio.trava:
         documentos = listar_documentos(projeto=projeto, versao=versao)
         if not documentos:
-            raise HTTPException(status_code=404, detail=f"Nenhum documento encontrado para projeto '{projeto}' e versão '{versao}'")
+            falhar(404, f"Nenhum documento encontrado para projeto '{projeto}' e versão '{versao}'", operacao="RECUPERACAO_VERSAO_VAZIA")
         destino = PASTA_EXPORTACOES / f"release_{uuid4()}.zip"
         try:
             with ZipFile(destino, "x", compression=ZIP_DEFLATED) as pacote:
                 for documento in documentos:
                     caminho = caminho_do_arquivo(documento)
                     if calcular_sha256(caminho, config["hash"]["algoritmo"]) != documento.sha256:
+                        logger.warning("INTEGRIDADE_FALHOU id=%s arquivo=%s operacao=recuperacao_versao", documento.id, documento.nome_original)
                         raise HTTPException(status_code=409, detail=f"Falha na integridade do arquivo {documento.nome_original} (hash SHA256 não confere)")
                     nome = documento.nome_original.replace("\\", "/").rsplit("/", 1)[-1]
                     pacote.write(caminho, f"arquivos/{documento.id}/{nome}")
@@ -146,6 +156,6 @@ def recuperar_versao(projeto, versao):
             raise
         except (OSError, ValueError) as erro:
             limpar_parcial(destino)
-            falhar(500, "Falha ao criar o pacote ZIP", erro)
-    logger.info("Versão recuperada: projeto=%s versão=%s, documentos=%s", projeto, versao, len(documentos))
+            falhar(500, "Falha ao criar o pacote ZIP", erro, operacao="ERRO_RECUPERACAO_VERSAO")
+    logger.info("RECUPERACAO_VERSAO projeto=%s versao=%s documentos=%d arquivo=%s", projeto, versao, len(documentos), destino.name)
     return destino

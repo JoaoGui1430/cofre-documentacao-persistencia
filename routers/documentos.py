@@ -103,7 +103,7 @@ def upload_documento(
 @router.get("", response_model=list[Documento])
 def listar_documentos(categoria: str | None = None, projeto: str | None = None, versao: str | None = None):
     documentos = service.listar_documentos(categoria=categoria, projeto=projeto, versao=versao)
-    logger.info("LISTAGEM total=%d", len(documentos))
+    logger.info("LISTAGEM total=%d categoria=%s projeto=%s versao=%s", len(documentos), categoria, projeto, versao)
     return documentos
 
 
