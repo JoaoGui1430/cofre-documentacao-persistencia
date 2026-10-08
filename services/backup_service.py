@@ -7,15 +7,15 @@ from core.armazenamento import caminho_arquivo, diretorio
 from services import documentos_service as documentos
 
 
-def gerar_destino(prefixo):
+def gerar_destino(prefixo, formato):
     """Escolhe um nome livre na pasta de backups, ex.: backup_2026-10-08_1430.zip."""
     pasta = diretorio("backups")
     base = f"{prefixo}_{datetime.now().strftime('%Y-%m-%d_%H%M')}"
-    destino = pasta / f"{base}.zip"
+    destino = pasta / f"{base}.{formato}"
     contador = 2
     # Dois backups no mesmo minuto ganham sufixo (_2, _3...) em vez de sobrescrever o anterior.
     while destino.exists():
-        destino = pasta / f"{base}_{contador}.zip"
+        destino = pasta / f"{base}_{contador}.{formato}"
         contador += 1
     return destino
 
@@ -23,6 +23,9 @@ def gerar_destino(prefixo):
 def criar_backup(projeto=None, versao=None):
     """Sem filtros: backup geral. Com projeto e/ou versão: backup seletivo só desses documentos."""
     seletivo = projeto is not None or versao is not None
+    formato = documentos.config["backup"]["formato"]
+    if formato != "zip":
+        documentos.falhar(500, f"Formato de backup não suportado: {formato}", operacao="ERRO_BACKUP")
 
     # A trava impede que um upload/exclusão aconteça no meio do backup,
     # então o ZIP sempre reflete um estado consistente do cofre.
@@ -31,7 +34,7 @@ def criar_backup(projeto=None, versao=None):
         if seletivo and not registros:
             documentos.falhar(404, "Nenhum documento encontrado para os filtros informados", operacao="BACKUP_SELETIVO_VAZIO")
 
-        destino = gerar_destino("backup_seletivo" if seletivo else "backup")
+        destino = gerar_destino("backup_seletivo" if seletivo else "backup", formato)
         incluidos = []
         ausentes = []
         try:

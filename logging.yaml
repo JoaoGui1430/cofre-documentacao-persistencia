@@ -17,12 +17,10 @@ handlers:
     class: logging.FileHandler
     level: DEBUG
     formatter: detailed
-    filename: sistema.log
     encoding: utf-8
 
 loggers:
   cofre_api:
-    level: DEBUG
     handlers:
       - console
       - file

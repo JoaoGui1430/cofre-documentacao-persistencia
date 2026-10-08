@@ -16,13 +16,12 @@ def configurar_logging(config):
     except yaml.YAMLError as erro:
         raise ValueError("O logging.yaml contém YAML inválido.") from erro
 
-    diretorio_logs = BASE_DIR / config["diretorios"]["logs"]
+    arquivo_log = BASE_DIR / config["logging"]["arquivo"]
 
-    diretorio_logs.mkdir(parents=True, exist_ok=True)
+    arquivo_log.parent.mkdir(parents=True, exist_ok=True)
 
-    nome_arquivo = config_logging["handlers"]["file"]["filename"]
-
-    config_logging["handlers"]["file"]["filename"] = str(diretorio_logs / nome_arquivo)
+    config_logging["handlers"]["file"]["filename"] = str(arquivo_log)
+    config_logging["loggers"]["cofre_api"]["level"] = str(config["logging"]["nivel"]).upper()
 
     logging.config.dictConfig(config_logging)
     
