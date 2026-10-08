@@ -101,6 +101,11 @@ def excluir_documento(identificador):
     with repositorio.trava:
         documentos = carregar_documentos()
         documento = localizar(documentos, identificador)
+        if not caminho_arquivo(documento.nome_armazenado).is_file():
+            # O arquivo físico já tinha sumido: remove só o registro, senão ele ficaria preso no JSON para sempre.
+            salvar_documentos([item for item in documentos if item.id != identificador])
+            logger.warning("EXCLUSAO_SEM_ARQUIVO id=%s arquivo=%s", identificador, documento.nome_armazenado)
+            return
         caminho = caminho_do_arquivo(documento)
         temporario = caminho.with_name(caminho.name + ".tmp")
         catalogo_alterado = False
@@ -123,12 +128,15 @@ def excluir_documento(identificador):
                 
     logger.info("EXCLUSAO id=%s arquivo=%s", identificador, documento.nome_original)
 
-def listar_documentos(categoria=None, projeto=None, versao=None):
+def listar_documentos(categoria=None, projeto=None, versao=None, extensao=None):
     filtros = normalizar_metadados({
         campo: valor
-        for campo, valor in {"categoria": categoria, "projeto": projeto, "versao": versao}.items()
+        for campo, valor in {"categoria": categoria, "projeto": projeto, "versao": versao, "extensao": extensao}.items()
         if valor is not None
     })
+    if "extensao" in filtros:
+        # Aceita "pdf", ".pdf" ou "PDF": converte para o formato gravado no JSON (".pdf").
+        filtros["extensao"] = "." + filtros["extensao"].lower().lstrip(".")
     documentos = carregar_documentos()
     for campo, valor in filtros.items():
         documentos = [documento for documento in documentos if getattr(documento, campo) == valor]
