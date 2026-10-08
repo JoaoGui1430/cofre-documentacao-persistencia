@@ -1,9 +1,14 @@
 import json
+from pathlib import Path
 from datetime import datetime
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
+from pydantic import ValidationError
+from fastapi import HTTPException
 
+from app.documento import Documento
+from utils.hash import calcular_hash_conteudo, calcular_sha256
 from core import repositorio
-from core.armazenamento import caminho_arquivo, diretorio
+from core.armazenamento import caminho_arquivo, diretorio, gravar_arquivo
 from services import documentos_service as documentos
 
 
@@ -48,12 +53,21 @@ def criar_backup(projeto=None, versao=None):
                         documentos.logger.warning("BACKUP_ARQUIVO_AUSENTE id=%s arquivo=%s", documento.id, documento.nome_armazenado)
                         ausentes.append(str(documento.id))
                         continue
+                    hash_atual = calcular_sha256(caminho, documentos.config["hash"]["algoritmo"])
+                    if hash_atual != documento.sha256:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Arquivo adulterado, backup adulterado: {documento.nome_original}",
+                        )
                     pacote.write(caminho, f"documentos/{documento.nome_armazenado}")
                     incluidos.append(documento)
 
                 # Metadados dos documentos incluídos, no mesmo formato do documentos.json do cofre.
                 dados = [item.model_dump(mode="json") for item in incluidos]
                 pacote.writestr("metadata/documentos.json", json.dumps(dados, ensure_ascii=False, indent=2))
+        except HTTPException:
+            documentos.limpar_parcial(destino)
+            raise
         except (OSError, ValueError) as erro:
             documentos.limpar_parcial(destino)
             documentos.falhar(500, "Falha ao criar o backup compactado", erro, operacao="ERRO_BACKUP")
@@ -95,3 +109,125 @@ def localizar_backup(nome):
 
     documentos.logger.info("DOWNLOAD_BACKUP arquivo=%s", caminho.name)
     return caminho
+
+def restaurar_backup(nome):
+    caminho = localizar_backup(nome)
+
+    with repositorio.trava:
+        if documentos.carregar_documentos():
+            documentos.falhar(
+                409,
+                "A restauração só é permitida quando o cofre está vazio.",
+                operacao="RESTAURACAO_COFRE_NAO_VAZIO",
+            )
+
+        try:
+            with ZipFile(caminho, "r") as pacote:
+                if pacote.testzip() is not None:
+                    raise ValueError("O ZIP está corrompido.")
+
+                nome_catalogo = "metadata/documentos.json"
+                if nome_catalogo not in pacote.namelist():
+                    raise ValueError("O backup não contém metadata/documentos.json.")
+
+                dados = json.loads(pacote.read(nome_catalogo).decode("utf-8"))
+                if not isinstance(dados, list):
+                    raise ValueError("O catálogo do backup não é uma lista.")
+
+                documentos_backup = [
+                    Documento.model_validate(item)
+                    for item in dados
+                ]
+
+                ids = [str(item.id) for item in documentos_backup]
+                nomes = [item.nome_armazenado for item in documentos_backup]
+
+                if len(ids) != len(set(ids)) or len(nomes) != len(set(nomes)):
+                    raise ValueError("O catálogo do backup possui documentos duplicados.")
+
+                arquivos = []
+                membros_esperados = {nome_catalogo}
+
+                for documento in documentos_backup:
+                    nome = documento.nome_armazenado
+
+                    if "/" in nome or "\\" in nome or Path(nome).name != nome:
+                        raise ValueError("O backup contém um nome de arquivo inválido.")
+
+                    membro = f"documentos/{nome}"
+                    if membro not in pacote.namelist():
+                        raise ValueError(f"Arquivo ausente no backup: {nome}")
+
+                    conteudo = pacote.read(membro)
+
+                    if len(conteudo) != documento.tamanho:
+                        raise ValueError(f"Tamanho inválido no backup: {nome}")
+
+                    hash_atual = calcular_hash_conteudo(
+                        conteudo,
+                        documentos.config["hash"]["algoritmo"],
+                    )
+                    if hash_atual != documento.sha256:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Hash inválido no backup: {nome}",
+                        )
+
+                    arquivos.append((documento, conteudo))
+                    membros_esperados.add(membro)
+
+                if set(pacote.namelist()) != membros_esperados:
+                    raise ValueError("O ZIP contém arquivos inesperados.")
+
+        except HTTPException:
+            raise
+        except (BadZipFile, OSError, ValueError, KeyError, TypeError, ValidationError) as erro:
+            documentos.falhar(
+                400,
+                "O backup é inválido ou não pôde ser lido.",
+                erro,
+                operacao="BACKUP_INVALIDO",
+            )
+
+        gravados = []
+
+        try:
+            for documento, conteudo in arquivos:
+                destino = caminho_arquivo(documento.nome_armazenado)
+
+                try:
+                    gravar_arquivo(documento.nome_armazenado, conteudo)
+                except FileExistsError:
+                    raise
+                except OSError:
+                    documentos.limpar_parcial(destino)
+                    raise
+
+                gravados.append(documento.nome_armazenado)
+
+            documentos.salvar_documentos(documentos_backup)
+
+        except HTTPException:
+            for nome_arquivo in gravados:
+                documentos.limpar_parcial(caminho_arquivo(nome_arquivo))
+            raise
+        except OSError as erro:
+            for nome_arquivo in gravados:
+                documentos.limpar_parcial(caminho_arquivo(nome_arquivo))
+            documentos.falhar(
+                500,
+                "Falha ao gravar os arquivos da restauração.",
+                erro,
+                operacao="ERRO_RESTAURACAO_BACKUP",
+            )
+
+    documentos.logger.info(
+        "RESTAURACAO_BACKUP arquivo=%s documentos=%d",
+        caminho.name,
+        len(documentos_backup),
+    )
+
+    return {
+        "backup": caminho.name,
+        "documentos_restaurados": len(documentos_backup),
+    }

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
-from services.backup_service import criar_backup, listar_backups, localizar_backup
+from services.backup_service import criar_backup, listar_backups, localizar_backup, restaurar_backup
 
 router = APIRouter(tags=["Backup"])
 
@@ -24,3 +24,7 @@ def listar():
 def baixar_backup(nome: str):
     caminho = localizar_backup(nome)
     return FileResponse(caminho, media_type="application/zip", filename=caminho.name)
+
+@router.post("/backups/{nome}/restaurar")
+def restaurar(nome: str):
+    return restaurar_backup(nome)
