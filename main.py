@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from core.config import carregar_configuracao
 from core.logging_config import configurar_logging
 from core.repositorio import ErroPersistencia
-from routers import documentos, integridade, exportacoes
+from routers import backup, documentos, integridade, exportacoes
 
 config = carregar_configuracao()
 logger = configurar_logging(config)
@@ -18,6 +18,7 @@ app = FastAPI(
 app.include_router(documentos.router)
 app.include_router(integridade.router)
 app.include_router(exportacoes.router)
+app.include_router(backup.router)
 
 
 # Qualquer falha ao ler/gravar o documentos.json vira uma resposta 500 e fica registrada no log.
