@@ -4,7 +4,7 @@ from datetime import date, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 
 from app.documento import Documento, DocumentoAtualizacao
@@ -17,6 +17,8 @@ from services.estatisticas_service import calcular_estatisticas
 from services.integridade_service import verificar_documento
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger("cofre_api")
+
+FILTROS_PERMITIDOS = {"categoria", "projeto", "versao", "extensao"}
 
 
 def obter_documento_ou_404(id: UUID) -> Documento:
@@ -101,9 +103,20 @@ def upload_documento(
 
 # F2 - Listagem (retorna os metadados completos de cada documento)
 @router.get("", response_model=list[Documento])
-def listar_documentos(categoria: str | None = None, projeto: str | None = None, versao: str | None = None):
-    documentos = service.listar_documentos(categoria=categoria, projeto=projeto, versao=versao)
-    logger.info("LISTAGEM total=%d", len(documentos))
+def listar_documentos(
+    request: Request,
+    categoria: str | None = None,
+    projeto: str | None = None,
+    versao: str | None = None,
+    extensao: str | None = None,
+):
+    # Sem isso, um filtro digitado errado (ex.: ?projetto=X) seria ignorado e a resposta traria todos os documentos.
+    desconhecidos = sorted(set(request.query_params) - FILTROS_PERMITIDOS)
+    if desconhecidos:
+        service.falhar(400, f"Filtro(s) não suportado(s): {', '.join(desconhecidos)}. Use: {', '.join(sorted(FILTROS_PERMITIDOS))}", operacao="FILTRO_INVALIDO")
+
+    documentos = service.listar_documentos(categoria=categoria, projeto=projeto, versao=versao, extensao=extensao)
+    logger.info("LISTAGEM total=%d categoria=%s projeto=%s versao=%s extensao=%s", len(documentos), categoria, projeto, versao, extensao)
     return documentos
 
 

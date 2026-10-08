@@ -16,7 +16,7 @@ def exportar_csv():
                 escritor.writerow(documento.model_dump(mode="json"))
     except (OSError, csv.Error, ValueError) as erro:
         documentos.limpar_parcial(destino)
-        documentos.falhar(500, "Falha ao exportar o catálogo para CSV.", erro)
+        documentos.falhar(500, "Falha ao exportar o catálogo para CSV.", erro, operacao="ERRO_EXPORTACAO_CSV")
 
-    documentos.logger.info("Cátalogo exportado para CSV: %s registros(s)", len(registros))
+    documentos.logger.info("EXPORTACAO_CSV arquivo=%s registros=%d", destino.name, len(registros))
     return destino

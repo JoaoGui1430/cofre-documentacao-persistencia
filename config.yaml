@@ -4,7 +4,6 @@ aplicacao:
 diretorios:
   arquivos: "storage/arquivos"
   metadata: "storage/metadata"
-  logs: "storage/logs"
   exportacoes: "storage/exportacoes"
   backups: "storage/backups"
 
@@ -13,3 +12,10 @@ upload:
 
 hash:
   algoritmo: "sha256"
+
+logging:
+  arquivo: "storage/logs/sistema.log"
+  nivel: "INFO"
+
+backup:
+  formato: "zip"

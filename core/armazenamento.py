@@ -1,8 +1,8 @@
 """Operações sobre os arquivos físicos (os documentos originais)."""
-import hashlib
 from pathlib import Path
 
 from core.config import BASE_DIR, carregar_configuracao
+from utils.hash import calcular_hash_conteudo
 
 
 def diretorio(chave):
@@ -19,7 +19,7 @@ def caminho_arquivo(nome_armazenado) -> Path:
 
 def calcular_sha256(conteudo: bytes) -> str:
     # hashlib (biblioteca padrão) calcula o hash; hexdigest() devolve os 64 caracteres hexadecimais.
-    return hashlib.sha256(conteudo).hexdigest()
+    return calcular_hash_conteudo(conteudo, carregar_configuracao()["hash"]["algoritmo"])
 
 
 def gravar_arquivo(nome_armazenado, conteudo: bytes) -> Path:
