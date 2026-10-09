@@ -25,21 +25,21 @@ Trabalho Prático 1 · **QXD0099 – Desenvolvimento de Software para Persistên
 
 ## Sumário
 
-- 👥 [Integrantes](#integrantes)
-- 📌 [Tema recebido](#tema-recebido)
-- 🎯 [Objetivo](#objetivo)
-- 🧰 [Requisitos](#requisitos)
-- 📚 [Bibliotecas utilizadas](#bibliotecas-utilizadas)
-- 📦 [Instalação](#instalação)
-- 🚀 [Execução](#execução)
-- 🗂️ [Estrutura do projeto](#estrutura-do-projeto)
-- ⚙️ [Configuração](#configuração)
-- 🏷️ [Metadados específicos do domínio](#metadados-específicos-do-domínio)
-- ⭐ [Funcionalidade específica do tema (F16)](#funcionalidade-específica-do-tema-f16)
-- 🔌 [Principais endpoints](#principais-endpoints)
-- 💡 [Exemplos de utilização](#exemplos-de-utilização)
-- 📝 [Logging](#logging)
-- 🚨 [Tratamento de erros](#tratamento-de-erros)
+- [Integrantes](#integrantes)
+- [Tema recebido](#tema-recebido)
+- [Objetivo](#objetivo)
+- [Requisitos](#requisitos)
+- [Bibliotecas utilizadas](#bibliotecas-utilizadas)
+- [Instalação](#instalação)
+- [Execução](#execução)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Configuração](#configuração)
+- [Metadados específicos do domínio](#metadados-específicos-do-domínio)
+- [Funcionalidade específica do tema (F16)](#funcionalidade-específica-do-tema-f16)
+- [Principais endpoints](#principais-endpoints)
+- [Exemplos de utilização](#exemplos-de-utilização)
+- [Logging](#logging)
+- [Tratamento de erros](#tratamento-de-erros)
 
 ---
 
