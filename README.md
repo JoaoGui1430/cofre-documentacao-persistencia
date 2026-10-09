@@ -16,17 +16,8 @@ Trabalho Prático 1 · **QXD0099 – Desenvolvimento de Software para Persistên
 <img alt="Uvicorn 0.52" src="https://img.shields.io/badge/Uvicorn-0.52-2F2F2F?style=for-the-badge">
 <img alt="PyYAML 6.0" src="https://img.shields.io/badge/PyYAML-6.0-CB171E?style=for-the-badge&logo=yaml&logoColor=white">
 <img alt="Swagger OpenAPI" src="https://img.shields.io/badge/Swagger-OpenAPI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black">
-
-<img alt="JSON metadados" src="https://img.shields.io/badge/JSON-metadados-000000?style=for-the-badge&logo=json&logoColor=white">
-<img alt="YAML configuração" src="https://img.shields.io/badge/YAML-configura%C3%A7%C3%A3o-CB171E?style=for-the-badge&logo=yaml&logoColor=white">
-<img alt="CSV exportação" src="https://img.shields.io/badge/CSV-exporta%C3%A7%C3%A3o-217346?style=for-the-badge">
-<img alt="ZIP backups" src="https://img.shields.io/badge/ZIP-backups-6E4C13?style=for-the-badge">
-<img alt="Logs logging" src="https://img.shields.io/badge/Logs-logging-4B5563?style=for-the-badge">
-<img alt="SHA-256 integridade" src="https://img.shields.io/badge/SHA--256-integridade-1F6FEB?style=for-the-badge">
-
 <img alt="Git" src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white">
 <img alt="GitHub" src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white">
-<img alt="Sem banco de dados persistência em arquivos" src="https://img.shields.io/badge/Sem_banco_de_dados-persist%C3%AAncia_em_arquivos-555555?style=for-the-badge">
 
 </div>
 
